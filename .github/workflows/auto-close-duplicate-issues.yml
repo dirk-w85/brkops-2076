@@ -61,7 +61,7 @@ jobs:
                 owner,
                 repo,
                 issue_number: i.number,
-                body: "Closing because another issue with the same title is labeled 'cleared'.",
+                body: "Closing because issue has been cleared.",
               });
             }
 
