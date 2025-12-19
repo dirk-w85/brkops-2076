@@ -1,0 +1,65 @@
+name: Auto-close duplicate issues
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  close-duplicates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find duplicate by title
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // List open issues with the same title
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+
+            const duplicate = issues.find(i =>
+              i.number !== issue.number &&
+              i.title.trim().toLowerCase() === issue.title.trim().toLowerCase()
+            );
+
+            if (!duplicate) {
+              core.info("No duplicate found.");
+              return;
+            }
+
+            core.info(`Found duplicate: #${duplicate.number}`);
+
+            // Comment on the new issue
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issue.number,
+              body: `Closing as duplicate of #${duplicate.number}.`,
+            });
+
+            // Optionally add a label
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: issue.number,
+              labels: ["duplicate"],
+            });
+
+            // Close the new issue
+            await github.rest.issues.update({
+              owner,
+              repo,
+              issue_number: issue.number,
+              state: "closed",
+            });
